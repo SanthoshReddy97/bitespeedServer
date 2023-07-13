@@ -23,6 +23,9 @@ export class ContactController {
   @Post()
   async create(@Body() createContactDto: CreateContactDto) {
     try {
+      if (!createContactDto.email && !createContactDto.phoneNumber) {
+        throw new HttpException('At least one field (email or phoneNumber) is required', HttpStatus.BAD_REQUEST)
+      }
       return await this.contactService.identifyContacts(createContactDto);
     } catch (error) {
       Logger.error(`Unhandled Internal server error: ${error?.message}`);
