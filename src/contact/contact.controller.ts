@@ -23,10 +23,13 @@ export class ContactController {
   @Post()
   async create(@Body() createContactDto: CreateContactDto) {
     try {
-      return await this.contactService.identifyContacts(createContactDto); 
+      return await this.contactService.identifyContacts(createContactDto);
     } catch (error) {
       Logger.error(`Unhandled Internal server error: ${error?.message}`);
-      throw new HttpException({statusCode: HttpStatus.INTERNAL_SERVER_ERROR, error: error?.message}, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, error: error?.message },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

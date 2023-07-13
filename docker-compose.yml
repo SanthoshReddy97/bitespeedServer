@@ -8,6 +8,5 @@ services:
       dockerfile: Dockerfile
       context: .
     restart: always
-    command: "npm start"
     ports:
       - "3000:3000"

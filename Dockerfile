@@ -1,11 +1,23 @@
-FROM node:18-alpine
+# Builds the nestjs project which will install dev dependencies too
+FROM node:18-alpine as builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
+
+COPY .. .
+
+RUN npm ci
+
+RUN npm run build
+
+# Here we only build the dependencies and build the production serevr
+FROM node:current-alpine3.18
+
+WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --only=production
+RUN npm ci --only=production && npm cache clean --force
 
-COPY . .
+COPY --from=builder /app/dist ./dist
 
-EXPOSE 3000
+CMD [ "node", "dist/main.js" ]

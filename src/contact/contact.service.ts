@@ -5,11 +5,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Contact, ContactLinkPrecedence } from './entities/contact.entity';
 import { In, Repository } from 'typeorm';
 
-
 /**
  * Add docker file
  * host to heroku
-*/
+ */
 
 @Injectable()
 export class ContactService {
@@ -42,10 +41,15 @@ export class ContactService {
 
     // Handling the creation of secondary contact
     this.logger.debug(`Started creation of secondary contact if required`);
-    await this.handleCreationOfSecondayContact(createContactDto, primaryContact);
+    await this.handleCreationOfSecondayContact(
+      createContactDto,
+      primaryContact,
+    );
 
     // checking for multiple primary contacts. If present then update other than older to secondary
-    this.logger.debug(`Started Handling the multiple primary contacts scenario`);
+    this.logger.debug(
+      `Started Handling the multiple primary contacts scenario`,
+    );
     await this.handleMultiplePrimaryContacts(createContactDto);
 
     // Fetching all the secondary contacts
@@ -59,9 +63,15 @@ export class ContactService {
 
   async handleMultiplePrimaryContacts(createContactDto: CreateContactDto) {
     const primaryContacts = await this.findContacts([
-      { email: createContactDto.email ? createContactDto.email: "", linkPrecedence: ContactLinkPrecedence.PRIMARY },
       {
-        phoneNumber: createContactDto.phoneNumber ? createContactDto.phoneNumber : "", linkPrecedence: ContactLinkPrecedence.PRIMARY
+        email: createContactDto.email ? createContactDto.email : '',
+        linkPrecedence: ContactLinkPrecedence.PRIMARY,
+      },
+      {
+        phoneNumber: createContactDto.phoneNumber
+          ? createContactDto.phoneNumber
+          : '',
+        linkPrecedence: ContactLinkPrecedence.PRIMARY,
       },
     ]);
     if (primaryContacts.length > 1) {
@@ -76,19 +86,22 @@ export class ContactService {
     }
   }
 
-  async handleCreationOfSecondayContact(createContactDto: CreateContactDto, primaryContact: Contact) {
-        // checking to create a secondary contact or not
-        const canCreateSecondaryContact = await this.canCreateSecondaryContact(
-          createContactDto.email,
-          createContactDto.phoneNumber,
-        );
-    
-        // if above check passed creating a secondary contact
-        if (canCreateSecondaryContact) {
-          createContactDto.linkPrecedence = ContactLinkPrecedence.SECONDARY;
-          createContactDto.linkedContact = primaryContact;
-          await this.create(createContactDto);
-        }
+  async handleCreationOfSecondayContact(
+    createContactDto: CreateContactDto,
+    primaryContact: Contact,
+  ) {
+    // checking to create a secondary contact or not
+    const canCreateSecondaryContact = await this.canCreateSecondaryContact(
+      createContactDto.email,
+      createContactDto.phoneNumber,
+    );
+
+    // if above check passed creating a secondary contact
+    if (canCreateSecondaryContact) {
+      createContactDto.linkPrecedence = ContactLinkPrecedence.SECONDARY;
+      createContactDto.linkedContact = primaryContact;
+      await this.create(createContactDto);
+    }
   }
 
   async contactResponse(contacts: Contact[]) {
