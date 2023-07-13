@@ -1,26 +1,32 @@
-import { BaseEntity } from "src/core/base.entity";
-import { Column, Entity, JoinColumn, ManyToOne, TableForeignKey } from "typeorm";
+import { BaseEntity } from 'src/core/base.entity';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  TableForeignKey,
+} from 'typeorm';
 
 export enum ContactLinkPrecedence {
-    PRIMARY = 'primary',
-    SECONDARY = 'secondary',
+  PRIMARY = 'primary',
+  SECONDARY = 'secondary',
 }
 
 @Entity()
 export class Contact extends BaseEntity {
-    @Column()
-    phoneNumber: string;
+  @Column({ nullable: true })
+  phoneNumber: string;
 
-    @Column()
-    email: string;
+  @Column({ nullable: true })
+  email: string;
 
-    @Column()
-    linkPrecedence: string;
+  @Column({ default: ContactLinkPrecedence.PRIMARY })
+  linkPrecedence: string;
 
-    @ManyToOne((type) => Contact, {
-        cascade: true,
-        nullable: true,
-    })
-    @JoinColumn({ name: 'linkedId' })
-    linkedId: Contact;
+  @ManyToOne((type) => Contact, {
+    cascade: true,
+    nullable: true,
+  })
+  @JoinColumn({ name: 'linkedId' })
+  linkedContact: Contact;
 }

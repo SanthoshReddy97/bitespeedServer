@@ -7,10 +7,8 @@ import { configService } from './config/config.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot(
-      configService.getTypeOrmConfig()
-    ),
-    ContactModule
+    TypeOrmModule.forRoot(configService.getTypeOrmConfig()),
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [AppService],

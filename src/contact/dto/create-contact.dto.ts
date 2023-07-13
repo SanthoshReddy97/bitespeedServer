@@ -1,6 +1,14 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { Contact } from '../entities/contact.entity';
+
 export class CreateContactDto {
+  @ApiProperty({ required: true })
+  email: string;
 
-    phoneNumber: string;
+  @ApiProperty({ required: true })
+  phoneNumber: string;
 
-    email: string;
+  linkPrecedence: string;
+
+  linkedContact: Contact;
 }
