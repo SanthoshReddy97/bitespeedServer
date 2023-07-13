@@ -5,15 +5,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Contact, ContactLinkPrecedence } from './entities/contact.entity';
 import { In, Repository } from 'typeorm';
 
+
+/**
+ * Add docker file
+ * host to heroku
+*/
+
 @Injectable()
 export class ContactService {
+  private readonly logger = new Logger(ContactService.name);
+
   constructor(
     @InjectRepository(Contact)
     private readonly contactRepository: Repository<Contact>,
   ) {}
 
   async identifyContacts(createContactDto: CreateContactDto) {
-    // get if contacts are present with email or phoneNumber in oldest created first
+    // finding the primary contact
     const identityContact = await this.findSingleContact(
       createContactDto.email,
       createContactDto.phoneNumber,
@@ -23,52 +31,64 @@ export class ContactService {
         ? identityContact
         : identityContact?.linkedContact;
 
-    // if no existing records create a new record and return response
+    this.logger.debug(`Primary Contact from db: ${primaryContact?.id}`);
+
+    // if there is no primary contact creating a new one and returning the data
     if (!primaryContact) {
+      this.logger.debug(`No primary contact found. creating a new contact`);
       const newContact = await this.create(createContactDto);
       return await this.contactResponse([newContact]);
     }
 
-    // check if a contact is present with the exact email or phone
-    // const newSecondaryContact = await this.findSingleContact(
-    //   createContactDto.email,
-    //   createContactDto.phoneNumber,
-    // );
-    const canCreateSecondaryContact = await this.canCreateSecondaryContact(
-      createContactDto.email,
-      createContactDto.phoneNumber,
-    );
+    // Handling the creation of secondary contact
+    this.logger.debug(`Started creation of secondary contact if required`);
+    await this.handleCreationOfSecondayContact(createContactDto, primaryContact);
 
-    // if contacts are present and freshContact is null then we need to create a secondary contact
-    if (canCreateSecondaryContact) {
-      createContactDto.linkPrecedence = ContactLinkPrecedence.SECONDARY;
-      createContactDto.linkedContact = primaryContact;
-      await this.create(createContactDto);
-    }
+    // checking for multiple primary contacts. If present then update other than older to secondary
+    this.logger.debug(`Started Handling the multiple primary contacts scenario`);
+    await this.handleMultiplePrimaryContacts(createContactDto);
 
-    // if records are present create a new secondary record considering the oldest as primary
-    const primaryContacts = await this.findPrimaryContacts(
-      createContactDto.email,
-      createContactDto.phoneNumber,
-    );
+    // Fetching all the secondary contacts
+    this.logger.debug(`Fetching all the secondary contacts`);
+    const secondaryContacts = await this.findContacts({
+      linkedContact: { id: primaryContact.id },
+    });
+
+    return await this.contactResponse([primaryContact, ...secondaryContacts]);
+  }
+
+  async handleMultiplePrimaryContacts(createContactDto: CreateContactDto) {
+    const primaryContacts = await this.findContacts([
+      { email: createContactDto.email ? createContactDto.email: "", linkPrecedence: ContactLinkPrecedence.PRIMARY },
+      {
+        phoneNumber: createContactDto.phoneNumber ? createContactDto.phoneNumber : "", linkPrecedence: ContactLinkPrecedence.PRIMARY
+      },
+    ]);
     if (primaryContacts.length > 1) {
       const contactIds = [];
       for (const contact of primaryContacts.slice(1)) {
-        if (contact.linkPrecedence === ContactLinkPrecedence.PRIMARY) {
-          contactIds.push(contact.id);
-        }
+        contactIds.push(contact.id);
       }
       await this.bulkUpdate(contactIds, {
         linkPrecedence: ContactLinkPrecedence.SECONDARY,
         linkedContact: primaryContacts[0],
       });
     }
+  }
 
-    const secondaryContacts = await this.findSecondaryContacts(
-      primaryContact.id,
-    );
-
-    return await this.contactResponse([primaryContact, ...secondaryContacts]);
+  async handleCreationOfSecondayContact(createContactDto: CreateContactDto, primaryContact: Contact) {
+        // checking to create a secondary contact or not
+        const canCreateSecondaryContact = await this.canCreateSecondaryContact(
+          createContactDto.email,
+          createContactDto.phoneNumber,
+        );
+    
+        // if above check passed creating a secondary contact
+        if (canCreateSecondaryContact) {
+          createContactDto.linkPrecedence = ContactLinkPrecedence.SECONDARY;
+          createContactDto.linkedContact = primaryContact;
+          await this.create(createContactDto);
+        }
   }
 
   async contactResponse(contacts: Contact[]) {
@@ -95,34 +115,6 @@ export class ContactService {
       : [];
   }
 
-  async findPrimaryContacts(email: string, phoneNumber: string) {
-    return await this.contactRepository.find({
-      where: [
-        { email: email },
-        {
-          phoneNumber: phoneNumber,
-        },
-      ],
-      order: { createdAt: 'ASC' },
-    });
-  }
-
-  async findSecondaryContacts(primaryContactId: number) {
-    return await this.contactRepository.find({
-      where: {
-        linkedContact: { id: primaryContactId },
-      },
-      order: { createdAt: 'ASC' },
-    });
-  }
-
-  async findSingleContact(email: string, phoneNumber: string) {
-    return await this.contactRepository.findOne({
-      where: [{ email: email }, { phoneNumber: phoneNumber }],
-      relations: { linkedContact: true },
-    });
-  }
-
   async canCreateSecondaryContact(email: string, phoneNumber: string) {
     const emailContact = await this.contactRepository.findOneBy({
       email: email,
@@ -131,6 +123,20 @@ export class ContactService {
       phoneNumber: phoneNumber,
     });
     return !emailContact || !phoneNumberContact ? true : false;
+  }
+
+  async findContacts(query: any) {
+    return await this.contactRepository.find({
+      where: query,
+      order: { id: 'ASC' },
+    });
+  }
+
+  async findSingleContact(email: string, phoneNumber: string) {
+    return await this.contactRepository.findOne({
+      where: [{ email: email }, { phoneNumber: phoneNumber }],
+      relations: { linkedContact: true },
+    });
   }
 
   async create(createContactDto: CreateContactDto) {

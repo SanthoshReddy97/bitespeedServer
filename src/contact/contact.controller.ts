@@ -6,6 +6,9 @@ import {
   Patch,
   Param,
   Delete,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ContactService } from './contact.service';
 import { CreateContactDto } from './dto/create-contact.dto';
@@ -19,6 +22,11 @@ export class ContactController {
 
   @Post()
   async create(@Body() createContactDto: CreateContactDto) {
-    return await this.contactService.identifyContacts(createContactDto);
+    try {
+      return await this.contactService.identifyContacts(createContactDto); 
+    } catch (error) {
+      Logger.error(`Unhandled Internal server error: ${error?.message}`);
+      throw new HttpException({statusCode: HttpStatus.INTERNAL_SERVER_ERROR, error: error?.message}, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }
