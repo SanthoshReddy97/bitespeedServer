@@ -5,11 +5,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Contact, ContactLinkPrecedence } from './entities/contact.entity';
 import { In, Repository } from 'typeorm';
 
-/**
- * Add docker file
- * host to heroku
- */
-
 @Injectable()
 export class ContactService {
   private readonly logger = new Logger(ContactService.name);
